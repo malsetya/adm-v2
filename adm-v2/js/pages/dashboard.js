@@ -1,0 +1,176 @@
+/* ============================================
+   DASHBOARD PAGE
+   ============================================ */
+
+const DashboardPage = {
+    async render() {
+        const main = document.getElementById('main-content');
+        main.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Memuat data dashboard...</div>`;
+
+        const docStats = await Store.getDocStats();
+        const projStats = await Store.getProjectStats();
+        const docs = await Store.getAll(Store.KEYS.DOCUMENTS);
+        const projects = await Store.getAll(Store.KEYS.PROJECTS);
+        const recentDocs = [...docs].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 6);
+
+        // Category counts for bar chart
+        const categories = {};
+        projects.forEach(p => { categories[p.kategori] = (categories[p.kategori] || 0) + 1; });
+
+        main.innerHTML = `
+            <div class="page-header">
+                <h1>Dashboard</h1>
+                <p>Ringkasan statistik dan monitoring dokumen infrastruktur</p>
+            </div>
+
+            <!-- Stat Cards -->
+            <div class="stat-cards stagger">
+                <div class="stat-card accent-blue">
+                    <div class="stat-card-header">
+                        <span class="stat-card-label">Total Dokumen</span>
+                        <div class="stat-card-icon blue">${Components.icon('document', 20)}</div>
+                    </div>
+                    <div class="stat-card-value">${docStats.total}</div>
+                    <div class="stat-card-footer">Semua tipe dokumen</div>
+                </div>
+                <div class="stat-card accent-success">
+                    <div class="stat-card-header">
+                        <span class="stat-card-label">Dokumen Final</span>
+                        <div class="stat-card-icon green">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">${docStats.final}</div>
+                    <div class="stat-card-footer">${docStats.total > 0 ? Math.round((docStats.final / docStats.total) * 100) : 0}% dari total</div>
+                </div>
+                <div class="stat-card accent-warning">
+                    <div class="stat-card-header">
+                        <span class="stat-card-label">Menunggu TTD</span>
+                        <div class="stat-card-icon orange">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
+                        </div>
+                    </div>
+                    <div class="stat-card-value">${docStats.signing}</div>
+                    <div class="stat-card-footer">Perlu persetujuan</div>
+                </div>
+                <div class="stat-card accent-gold">
+                    <div class="stat-card-header">
+                        <span class="stat-card-label">Proyek Aktif</span>
+                        <div class="stat-card-icon gold">${Components.icon('project', 20)}</div>
+                    </div>
+                    <div class="stat-card-value">${projStats.active}</div>
+                    <div class="stat-card-footer">${projStats.total} total proyek</div>
+                </div>
+            </div>
+
+            <!-- Charts Grid -->
+            <div class="dashboard-grid">
+                <!-- Document Status Chart -->
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">Status Dokumen</span>
+                    </div>
+                    <div class="donut-container">
+                        <div class="donut-chart" id="donut-chart"></div>
+                        <div class="donut-legend">
+                            <div class="legend-item"><div class="legend-dot" style="background:#dc2626"></div> Draft (${docStats.draft})</div>
+                            <div class="legend-item"><div class="legend-dot" style="background:#0284c7"></div> Review (${docStats.review})</div>
+                            <div class="legend-item"><div class="legend-dot" style="background:#d97706"></div> Signing (${docStats.signing})</div>
+                            <div class="legend-item"><div class="legend-dot" style="background:#059669"></div> Final (${docStats.final})</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Projects by Category -->
+                <div class="chart-card">
+                    <div class="chart-card-header">
+                        <span class="chart-card-title">Proyek per Kategori</span>
+                    </div>
+                    <div class="bar-chart" id="bar-chart">
+                        ${Object.entries(categories).map(([cat, count]) => {
+                            const maxCount = Math.max(...Object.values(categories));
+                            const height = maxCount > 0 ? (count / maxCount) * 140 : 10;
+                            return `
+                                <div class="bar-group">
+                                    <div class="bar" style="height:${height}px;background:${Utils.getCategoryColor(cat)}"></div>
+                                    <div class="bar-label">${cat}</div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+
+                <!-- Recent Documents Table -->
+                <div class="recent-table-card">
+                    <div class="recent-table-header">
+                        <h3>Dokumen Terbaru</h3>
+                        <a href="#/documents" class="btn btn-ghost btn-sm">Lihat Semua</a>
+                    </div>
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Judul</th>
+                                <th>Tipe</th>
+                                <th>Status</th>
+                                <th>TTD Progress</th>
+                                <th>Diperbarui</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${recentDocs.map(doc => {
+                                const sigProg = Utils.signatureProgress(doc.signatures || []);
+                                return `
+                                    <tr>
+                                        <td>
+                                            <div style="font-weight:500">${Utils.escapeHtml(doc.judul)}</div>
+                                            <div class="text-xs text-secondary">${doc.project_id ? 'Terkait Proyek' : '-'}</div>
+                                        </td>
+                                        <td><span class="badge badge-inactive">${doc.tipe_dokumen}</span></td>
+                                        <td>${Utils.getStatusBadge(doc.status)}</td>
+                                        <td>
+                                            <div class="progress-bar" style="width:80px">
+                                                <div class="progress-fill" style="width:${sigProg}%"></div>
+                                            </div>
+                                            <span class="text-xs text-secondary">${sigProg}%</span>
+                                        </td>
+                                        <td class="text-sm text-secondary">${Utils.formatDate(doc.updated_at)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        `;
+
+        this.renderDonut(docStats);
+    },
+
+    renderDonut(stats) {
+        const el = document.getElementById('donut-chart');
+        if (!el) return;
+        const total = stats.total || 1;
+        const segments = [
+            { value: stats.draft, color: '#dc2626' },
+            { value: stats.review, color: '#0284c7' },
+            { value: stats.signing, color: '#d97706' },
+            { value: stats.final, color: '#059669' },
+        ];
+
+        let offset = 0;
+        const gradientParts = [];
+        segments.forEach(seg => {
+            const pct = (seg.value / total) * 100;
+            gradientParts.push(`${seg.color} ${offset}% ${offset + pct}%`);
+            offset += pct;
+        });
+
+        el.style.background = `conic-gradient(${gradientParts.join(', ')})`;
+        el.innerHTML = `
+            <div class="donut-center" style="width:100px;height:100px;border-radius:50%;background:var(--bg-card);display:flex;flex-direction:column;align-items:center;justify-content:center">
+                <div class="donut-center-value">${total}</div>
+                <div class="donut-center-label">Dokumen</div>
+            </div>
+        `;
+    }
+};

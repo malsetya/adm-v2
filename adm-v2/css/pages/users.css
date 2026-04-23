@@ -1,0 +1,19 @@
+/* ── Users Page ── */
+.user-card {
+    background: var(--bg-card); border: 1px solid var(--border-light);
+    border-radius: var(--border-radius-lg); padding: var(--space-5);
+    box-shadow: var(--shadow-card); transition: all var(--transition-base);
+    text-align: center;
+}
+.user-card:hover { box-shadow: var(--shadow-card-hover); }
+.user-card-avatar {
+    width: 56px; height: 56px; margin: 0 auto var(--space-3);
+    border-radius: var(--border-radius-full);
+    background: linear-gradient(135deg, var(--pupr-blue), var(--pupr-blue-light));
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-size: var(--font-size-lg); font-weight: var(--font-weight-bold);
+}
+.user-card-name { font-weight: var(--font-weight-semibold); font-size: var(--font-size-base); margin-bottom: var(--space-1); }
+.user-card-email { font-size: var(--font-size-xs); color: var(--text-tertiary); margin-bottom: var(--space-3); }
+.user-card-actions { display: flex; justify-content: center; gap: var(--space-2); margin-top: var(--space-3); }
+.user-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-5); }

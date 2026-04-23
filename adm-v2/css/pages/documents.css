@@ -1,0 +1,16 @@
+/* ── Documents Page ── */
+.doc-detail-modal .modal { max-width: 640px; }
+.doc-sig-list { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-3); }
+.doc-sig-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--space-3); background: var(--bg-tertiary);
+    border-radius: var(--border-radius-md); font-size: var(--font-size-sm);
+}
+.doc-sig-item.signed { border-left: 3px solid var(--success); }
+.doc-sig-item.pending { border-left: 3px solid var(--border-light); }
+.doc-version-list { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-3); }
+.doc-version-item {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--space-2) var(--space-3); background: var(--bg-tertiary);
+    border-radius: var(--border-radius-sm); font-size: var(--font-size-xs);
+}

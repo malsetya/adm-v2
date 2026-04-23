@@ -1,0 +1,15 @@
+/* ── Projects Page ── */
+.project-card-category {
+    font-size: var(--font-size-xs); font-weight: var(--font-weight-semibold);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    margin-bottom: var(--space-2);
+}
+.project-card-title { font-size: var(--font-size-md); font-weight: var(--font-weight-bold); margin-bottom: var(--space-3); color: var(--text-primary); }
+.project-card-meta { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.project-meta-item { display: flex; align-items: center; gap: var(--space-2); font-size: var(--font-size-xs); color: var(--text-secondary); }
+.project-meta-item svg { width: 14px; height: 14px; flex-shrink: 0; }
+.project-progress { margin-top: auto; }
+.project-progress-header { display: flex; justify-content: space-between; margin-bottom: var(--space-2); font-size: var(--font-size-xs); }
+.project-progress-label { color: var(--text-secondary); }
+.project-progress-value { font-weight: var(--font-weight-semibold); color: var(--text-primary); }
+.project-card .card { display: flex; flex-direction: column; }
