@@ -15,6 +15,58 @@ const Store = {
     async init() {
         const theme = localStorage.getItem(this.KEYS.THEME) || 'light';
         document.documentElement.setAttribute('data-theme', theme);
+
+        // Sync auth state on load
+        try {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if (session) {
+                const { data: profile } = await supabaseClient
+                    .from('users')
+                    .select('*')
+                    .eq('id', session.user.id)
+                    .single();
+                if (profile) {
+                    localStorage.setItem(this.KEYS.CURRENT_USER, JSON.stringify(profile));
+                    this.initRealtime();
+                }
+            } else {
+                localStorage.removeItem(this.KEYS.CURRENT_USER);
+            }
+        } catch (error) {
+            console.error('Session sync error:', error);
+        }
+    },
+
+    initRealtime() {
+        if (this.realtimeChannel) return;
+        
+        this.realtimeChannel = supabaseClient.channel('public:documents')
+            .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'documents' }, payload => {
+                const doc = payload.new;
+                if (window.Components && window.Components.toast) {
+                    window.Components.toast(`🔔 Dokumen Baru: ${doc.judul}`, 'success');
+                }
+                if (window.App && window.App.currentPage === 'documents') {
+                    if (window.DocumentsPage) window.DocumentsPage.render();
+                } else if (window.App && window.App.currentPage === 'dashboard') {
+                    if (window.DashboardPage) window.DashboardPage.render();
+                }
+            })
+            .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'documents' }, payload => {
+                const doc = payload.new;
+                const old = payload.old;
+                if (doc.status !== old.status) {
+                    if (window.Components && window.Components.toast) {
+                        window.Components.toast(`🔔 Status Berubah: ${doc.judul} -> ${doc.status}`, 'info');
+                    }
+                }
+                if (window.App && window.App.currentPage === 'documents') {
+                    if (window.DocumentsPage) window.DocumentsPage.render();
+                } else if (window.App && window.App.currentPage === 'dashboard') {
+                    if (window.DashboardPage) window.DashboardPage.render();
+                }
+            })
+            .subscribe();
     },
 
     // ── CRUD (Supabase Asynchronous) ──
@@ -64,48 +116,87 @@ const Store = {
     },
 
     // ── Auth ──
-    async login(username, password) {
-        // Validasi ke tabel users
-        const { data, error } = await supabaseClient.from(this.KEYS.USERS)
+    async login(email, password) {
+        // Validasi menggunakan Supabase Auth
+        const { data, error } = await supabaseClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+
+        if (error) {
+            console.error('Login error:', error);
+            throw error;
+        }
+
+        const authUser = data.user;
+
+        // Ambil profil dari tabel public.users secara sinkron
+        let { data: profile, error: profileError } = await supabaseClient
+            .from('users')
             .select('*')
-            .eq('username', username)
-            .eq('password', password)
-            .eq('status', 'Aktif')
+            .eq('id', authUser.id)
             .maybeSingle();
 
-        if (data && !error) {
-            const session = { ...data };
-            delete session.password; // Remove password from local session
-            localStorage.setItem(this.KEYS.CURRENT_USER, JSON.stringify(session));
-            await this.logActivity('Login', `${data.nama} masuk ke sistem`);
-            return data;
+        // Jika profil tidak ditemukan (biasanya karena user dibuat manual di Dashboard sebelum Trigger diaktifkan), 
+        // kita buat profilnya secara otomatis sebagai "Self-Healing".
+        if (!profile) {
+            const newProfile = {
+                id: authUser.id,
+                email: authUser.email,
+                nama: authUser.user_metadata?.nama || authUser.email.split('@')[0],
+                avatar: (authUser.user_metadata?.avatar || authUser.email.substring(0,2)).toUpperCase(),
+                role: 'viewer',
+                status: 'Aktif'
+            };
+            
+            const { data: insertedProfile, error: insertError } = await supabaseClient
+                .from('users')
+                .insert([newProfile])
+                .select()
+                .single();
+                
+            if (insertError) {
+                console.error('Gagal membuat profil otomatis:', insertError);
+                throw insertError;
+            }
+            profile = insertedProfile;
         }
-        return null;
+
+        // Simpan sesi ke localStorage
+        localStorage.setItem(this.KEYS.CURRENT_USER, JSON.stringify(profile));
+        this.initRealtime();
+        
+        // Catat log aktivitas
+        await this.logActivity('Login', `${profile.nama} masuk ke sistem`);
+        
+        return profile;
     },
 
-    async register(name, email, username, password) {
-        const newUser = {
-            id: crypto.randomUUID(),
-            nama: name,
+    async register(name, email, password) {
+        // Daftar menggunakan Supabase Auth
+        const { data, error } = await supabaseClient.auth.signUp({
             email: email,
-            username: username,
             password: password,
-            role: 'viewer', // default role
-            status: 'Aktif',
-            avatar: name.substring(0,2).toUpperCase()
-        };
-        const { data, error } = await supabaseClient.from(this.KEYS.USERS).insert([newUser]).select().single();
+            options: {
+                data: {
+                    nama: name,
+                    avatar: name.substring(0, 2).toUpperCase()
+                }
+            }
+        });
+
         if (error) {
             console.error('Registration error:', error);
             return { success: false, error: error.message };
         }
-        return { success: true, user: data };
+        return { success: true, user: data.user };
     },
 
     async logout() {
         const user = this.getCurrentUser();
         if (user) await this.logActivity('Logout', `${user.nama} keluar dari sistem`);
-        localStorage.removeItem(this.KEYS.CURRENT_USER);
+        await supabaseClient.auth.signOut();
+        // localStorage ck2_current_user akan dihapus oleh onAuthStateChange di supabase-client
     },
 
     getCurrentUser() {
@@ -138,6 +229,31 @@ const Store = {
             detail: detail,
             timestamp: new Date().toISOString()
         });
+    },
+
+    // ── Storage (Files) ──
+    async uploadDocumentFile(file) {
+        if (!file) return null;
+        
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+        const filePath = `${fileName}`;
+
+        const { data, error } = await supabaseClient.storage
+            .from('documents')
+            .upload(filePath, file);
+
+        if (error) {
+            console.error('Error uploading file:', error);
+            throw error;
+        }
+
+        // Get public URL
+        const { data: publicUrlData } = supabaseClient.storage
+            .from('documents')
+            .getPublicUrl(filePath);
+
+        return publicUrlData.publicUrl;
     },
 
     // ── Stats (Aggregations) ──

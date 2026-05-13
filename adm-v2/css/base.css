@@ -80,3 +80,34 @@ ul, ol { list-style: none; }
 .stagger > *:nth-child(4) { animation-delay: 0.2s; }
 .stagger > *:nth-child(5) { animation-delay: 0.25s; }
 .stagger > *:nth-child(6) { animation-delay: 0.3s; }
+
+/* Skeleton Loading */
+.skeleton {
+    background: var(--border-medium);
+    background: linear-gradient(90deg, var(--border-medium) 25%, var(--border-light) 50%, var(--border-medium) 75%);
+    background-size: 200% 100%;
+    animation: skeleton-loading 1.5s infinite;
+    border-radius: var(--border-radius-sm);
+}
+
+@keyframes skeleton-loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.skeleton-text {
+    height: 14px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+.skeleton-title {
+    height: 24px;
+    margin-bottom: 12px;
+    width: 60%;
+    border-radius: 6px;
+}
+.skeleton-block {
+    height: 100px;
+    margin-bottom: 16px;
+    border-radius: var(--border-radius-md);
+}

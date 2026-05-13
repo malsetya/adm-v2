@@ -19,7 +19,7 @@ const LoginPage = {
                     <div class="login-title">Cipta Karya</div>
                     <div class="login-subtitle">Dashboard Administrasi Dokumen v2</div>
                 </div>
-
+                
                 <div class="login-error" id="login-error" style="display:none; color:var(--error); margin-bottom:15px; font-size:14px; text-align:center;"></div>
                 <div class="login-success" id="login-success" style="display:none; color:var(--success); margin-bottom:15px; font-size:14px; text-align:center;"></div>
 
@@ -29,14 +29,10 @@ const LoginPage = {
                         <label class="form-label" for="login-name">Nama Lengkap</label>
                         <input type="text" id="login-name" class="form-input" placeholder="Masukkan nama lengkap" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label" for="login-email">Email</label>
-                        <input type="email" id="login-email" class="form-input" placeholder="Masukkan email" required>
-                    </div>
                     ` : ''}
                     <div class="form-group">
-                        <label class="form-label" for="login-username">Username</label>
-                        <input type="text" id="login-username" class="form-input" placeholder="Masukkan username" autocomplete="username" required>
+                        <label class="form-label" for="login-email">Email</label>
+                        <input type="email" id="login-email" class="form-input" placeholder="Masukkan email" autocomplete="email" required>
                     </div>
                     <div class="form-group">
                         <label class="form-label" for="login-password">Password</label>
@@ -46,17 +42,17 @@ const LoginPage = {
                 </form>
 
                 <div style="text-align:center; margin-top: 20px; font-size: 14px;">
-                    ${this.isSignUp 
-                        ? `Sudah punya akun? <a href="#" onclick="event.preventDefault(); LoginPage.toggleMode()">Masuk di sini</a>`
-                        : `Belum punya akun? <a href="#" onclick="event.preventDefault(); LoginPage.toggleMode()">Daftar sekarang</a>`
-                    }
+                    ${this.isSignUp
+                    ? `Sudah punya akun? <a href="#" onclick="event.preventDefault(); LoginPage.toggleMode()">Masuk di sini</a>`
+                    : `Belum punya akun? <a href="#" onclick="event.preventDefault(); LoginPage.toggleMode()">Daftar sekarang</a>`
+                }
                 </div>
             </div>
         `;
 
         document.getElementById('login-form').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
+
             const btn = document.getElementById('login-submit-btn');
             const originalText = btn.textContent;
             btn.textContent = 'Memuat...';
@@ -81,7 +77,6 @@ const LoginPage = {
     async handleSignUp() {
         const name = document.getElementById('login-name').value.trim();
         const email = document.getElementById('login-email').value.trim();
-        const username = document.getElementById('login-username').value.trim();
         const password = document.getElementById('login-password').value.trim();
         const errorEl = document.getElementById('login-error');
         const successEl = document.getElementById('login-success');
@@ -89,14 +84,14 @@ const LoginPage = {
         errorEl.style.display = 'none';
         successEl.style.display = 'none';
 
-        if (!name || !email || !username || !password) {
+        if (!name || !email || !password) {
             errorEl.textContent = 'Semua field harus diisi.';
             errorEl.style.display = 'block';
             return;
         }
 
         try {
-            const result = await Store.register(name, email, username, password);
+            const result = await Store.register(name, email, password);
             if (result.success) {
                 successEl.textContent = 'Pendaftaran berhasil! Anda dapat masuk sekarang.';
                 successEl.style.display = 'block';
@@ -115,29 +110,38 @@ const LoginPage = {
     },
 
     async handleLogin() {
-        const username = document.getElementById('login-username').value.trim();
+        const email = document.getElementById('login-email').value.trim();
         const password = document.getElementById('login-password').value.trim();
         const errorEl = document.getElementById('login-error');
 
-        if (!username || !password) {
-            errorEl.textContent = 'Username dan password harus diisi.';
+        if (!email || !password) {
+            errorEl.textContent = 'Email dan password harus diisi.';
             errorEl.style.display = 'block';
             return;
         }
 
         try {
-            const user = await Store.login(username, password);
+            const user = await Store.login(email, password);
             if (user) {
                 errorEl.style.display = 'none';
                 await App.onLoginSuccess();
             } else {
-                errorEl.textContent = 'Username atau password salah, atau akun tidak aktif.';
+                errorEl.textContent = 'Gagal memuat profil pengguna.';
                 errorEl.style.display = 'block';
-                document.getElementById('login-password').value = '';
             }
         } catch (error) {
-            console.error(error);
-            errorEl.textContent = 'Terjadi kesalahan saat menghubungi server.';
+            console.error('Error dari Store.login:', error);
+            // Translate common Supabase Auth errors
+            const errMsg = error?.message || String(error);
+            if (errMsg.includes('Invalid login credentials')) {
+                errorEl.textContent = 'Email atau password salah.';
+            } else if (errMsg.includes('Email not confirmed')) {
+                errorEl.textContent = 'Email belum dikonfirmasi.';
+            } else if (errMsg.includes('violates row-level security')) {
+                errorEl.textContent = 'Akses ditolak oleh database (Row Level Security). Profil Anda belum lengkap di tabel publik.';
+            } else {
+                errorEl.textContent = 'Terjadi kesalahan: ' + errMsg;
+            }
             errorEl.style.display = 'block';
         }
     }

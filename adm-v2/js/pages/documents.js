@@ -7,7 +7,16 @@ const DocumentsPage = {
 
     async render() {
         const main = document.getElementById('main-content');
-        main.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Memuat data dokumen...</div>`;
+        main.innerHTML = `
+            <div class="page-header">
+                <div class="skeleton skeleton-title" style="width:200px"></div>
+                <div class="skeleton skeleton-text" style="width:300px"></div>
+            </div>
+            <div style="margin-top:20px;">
+                <div class="skeleton skeleton-block" style="height:60px; border-radius:8px"></div>
+                <div class="skeleton skeleton-block" style="height:400px; border-radius:12px; margin-top:20px"></div>
+            </div>
+        `;
 
         const docs = await this.getFilteredDocs();
         const projects = await Store.getAll(Store.KEYS.PROJECTS);
@@ -38,9 +47,13 @@ const DocumentsPage = {
                         <option value="Final" ${this.filters.status === 'Final' ? 'selected' : ''}>Final</option>
                     </select>
                 </div>
-                ${Store.isAdmin() || Store.getCurrentUser().role === 'staff' ? `
-                <button class="btn btn-primary" id="btn-add-doc">${Components.icon('plus', 16)} Tambah Dokumen</button>
-                ` : ''}
+                <div style="display:flex; gap:var(--space-2);">
+                    <button class="btn btn-ghost" onclick="DocumentsPage.exportCSV()">Ekspor CSV</button>
+                    <button class="btn btn-ghost" onclick="window.print()">Cetak PDF</button>
+                    ${Store.isAdmin() || Store.getCurrentUser().role === 'staff' ? `
+                    <button class="btn btn-primary" id="btn-add-doc">${Components.icon('plus', 16)} Tambah Dokumen</button>
+                    ` : ''}
+                </div>
             </div>
 
             <div class="data-table-wrapper" style="animation:fadeInUp 0.4s ease">
@@ -106,6 +119,24 @@ const DocumentsPage = {
         if (this.filters.type) docs = docs.filter(d => d.tipe_dokumen === this.filters.type);
         if (this.filters.status) docs = docs.filter(d => d.status === this.filters.status);
         return docs.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+    },
+
+    exportCSV() {
+        this.getFilteredDocs().then(docs => {
+            if (docs.length === 0) return Components.toast('Tidak ada data untuk diekspor', 'warning');
+            const data = docs.map(d => ({
+                "ID": d.id,
+                "Nomor Surat": d.nomor_surat,
+                "Judul": d.judul,
+                "Tipe Dokumen": d.tipe_dokumen,
+                "Status": d.status,
+                "ID Proyek": d.project_id || '-',
+                "Versi": d.version,
+                "Tgl Dibuat": Utils.formatDateTime(d.created_at),
+                "Tgl Diperbarui": Utils.formatDateTime(d.updated_at)
+            }));
+            Utils.exportToCSV('Laporan_Dokumen.csv', data);
+        });
     },
 
     bindEvents() {

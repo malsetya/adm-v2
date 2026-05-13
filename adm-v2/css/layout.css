@@ -278,3 +278,49 @@
 @media (max-width: 480px) {
     .main-content { padding: var(--space-3); }
 }
+
+/* ── Print Media ── */
+@media print {
+    /* Sembunyikan elemen navigasi dan tombol */
+    .sidebar, .mobile-header, .toolbar button, .toolbar .search-box, .modal-overlay, .btn {
+        display: none !important;
+    }
+    
+    /* Bentangkan area utama */
+    .app-layout {
+        display: block !important;
+        height: auto !important;
+        overflow: visible !important;
+    }
+    
+    .main-content {
+        padding: 0 !important;
+        overflow: visible !important;
+        height: auto !important;
+        background: transparent !important;
+    }
+
+    /* Paksa warna dasar agar tinta jelas */
+    body, html {
+        background: white !important;
+        color: black !important;
+    }
+    
+    /* Rapikan tabel untuk cetak */
+    .data-table {
+        width: 100% !important;
+        border-collapse: collapse !important;
+    }
+    
+    .data-table th, .data-table td {
+        border: 1px solid #ccc !important;
+        padding: 8px !important;
+        color: black !important;
+    }
+    
+    .badge {
+        border: 1px solid #333 !important;
+        background: transparent !important;
+        color: black !important;
+    }
+}

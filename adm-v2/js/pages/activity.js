@@ -7,7 +7,16 @@ const ActivityPage = {
 
     async render() {
         const main = document.getElementById('main-content');
-        main.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Memuat data aktivitas...</div>`;
+        main.innerHTML = `
+            <div class="page-header">
+                <div class="skeleton skeleton-title" style="width:200px"></div>
+                <div class="skeleton skeleton-text" style="width:300px"></div>
+            </div>
+            <div style="margin-top:20px;">
+                <div class="skeleton skeleton-block" style="height:60px; border-radius:8px"></div>
+                <div class="skeleton skeleton-block" style="height:300px; border-radius:12px; margin-top:20px"></div>
+            </div>
+        `;
 
         const activities = await this.getFiltered();
         const allActivities = await Store.getAll(Store.KEYS.ACTIVITIES);
@@ -30,7 +39,11 @@ const ActivityPage = {
                         ${allActions.map(a => `<option value="${a}" ${this.filters.action === a ? 'selected' : ''}>${a}</option>`).join('')}
                     </select>
                 </div>
-                <span class="text-sm text-secondary">${activities.length} aktivitas</span>
+                <div style="display:flex; gap:var(--space-2); align-items:center;">
+                    <span class="text-sm text-secondary" style="margin-right:10px">${activities.length} aktivitas</span>
+                    <button class="btn btn-ghost" onclick="ActivityPage.exportCSV()">Ekspor CSV</button>
+                    <button class="btn btn-ghost" onclick="window.print()">Cetak PDF</button>
+                </div>
             </div>
 
             <div class="data-table-wrapper" style="animation:fadeInUp 0.4s ease">
@@ -72,6 +85,20 @@ const ActivityPage = {
         }
         if (this.filters.action) acts = acts.filter(a => a.action === this.filters.action);
         return acts;
+    },
+
+    exportCSV() {
+        this.getFiltered().then(acts => {
+            if (acts.length === 0) return Components.toast('Tidak ada data untuk diekspor', 'warning');
+            const data = acts.map(a => ({
+                "ID": a.id,
+                "Waktu": Utils.formatDateTime(a.timestamp),
+                "Nama Pengguna": a.user_name,
+                "Aksi": a.action,
+                "Detail": a.detail
+            }));
+            Utils.exportToCSV('Laporan_Aktivitas.csv', data);
+        });
     },
 
     bindEvents() {

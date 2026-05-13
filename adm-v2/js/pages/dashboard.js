@@ -3,14 +3,56 @@
    ============================================ */
 
 const DashboardPage = {
+    dateFilter: 'all',
+
     async render() {
         const main = document.getElementById('main-content');
-        main.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Memuat data dashboard...</div>`;
+        main.innerHTML = `
+            <div class="page-header">
+                <div class="skeleton skeleton-title"></div>
+                <div class="skeleton skeleton-text" style="width:40%"></div>
+            </div>
+            <div class="stat-cards stagger">
+                <div class="skeleton skeleton-block"></div>
+                <div class="skeleton skeleton-block"></div>
+                <div class="skeleton skeleton-block"></div>
+                <div class="skeleton skeleton-block"></div>
+            </div>
+            <div class="dashboard-grid stagger" style="margin-top:20px;">
+                <div class="skeleton skeleton-block" style="height:300px"></div>
+                <div class="skeleton skeleton-block" style="height:300px"></div>
+            </div>
+        `;
 
-        const docStats = await Store.getDocStats();
-        const projStats = await Store.getProjectStats();
-        const docs = await Store.getAll(Store.KEYS.DOCUMENTS);
-        const projects = await Store.getAll(Store.KEYS.PROJECTS);
+        let docs = await Store.getAll(Store.KEYS.DOCUMENTS);
+        let projects = await Store.getAll(Store.KEYS.PROJECTS);
+
+        // Apply Date Filter
+        const now = new Date();
+        if (this.dateFilter === 'month') {
+            docs = docs.filter(d => { const dt = new Date(d.created_at || d.updated_at); return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear(); });
+            projects = projects.filter(p => { const dt = new Date(p.created_at || p.updated_at); return dt.getMonth() === now.getMonth() && dt.getFullYear() === now.getFullYear(); });
+        } else if (this.dateFilter === 'year') {
+            docs = docs.filter(d => new Date(d.created_at || d.updated_at).getFullYear() === now.getFullYear());
+            projects = projects.filter(p => new Date(p.created_at || p.updated_at).getFullYear() === now.getFullYear());
+        }
+
+        const docStats = {
+            total: docs.length,
+            draft: docs.filter(d => d.status === 'Draft').length,
+            review: docs.filter(d => d.status === 'Review').length,
+            signing: docs.filter(d => d.status === 'Signing').length,
+            final: docs.filter(d => d.status === 'Final').length,
+            needSign: docs.filter(d => d.status === 'Signing').length,
+        };
+
+        const projStats = {
+            total: projects.length,
+            active: projects.filter(p => p.status === 'Berjalan').length,
+            done: projects.filter(p => p.status === 'Selesai').length,
+            delayed: projects.filter(p => p.status === 'Tertunda').length,
+        };
+
         const recentDocs = [...docs].sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at)).slice(0, 6);
 
         // Category counts for bar chart
@@ -18,9 +60,18 @@ const DashboardPage = {
         projects.forEach(p => { categories[p.kategori] = (categories[p.kategori] || 0) + 1; });
 
         main.innerHTML = `
-            <div class="page-header">
-                <h1>Dashboard</h1>
-                <p>Ringkasan statistik dan monitoring dokumen infrastruktur</p>
+            <div class="page-header" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h1>Dashboard</h1>
+                    <p>Ringkasan statistik dan monitoring dokumen infrastruktur</p>
+                </div>
+                <div>
+                    <select id="dashboard-filter" class="form-input" style="width:auto; cursor:pointer;" onchange="DashboardPage.changeFilter(this.value)">
+                        <option value="all" ${this.dateFilter === 'all' ? 'selected' : ''}>Semua Waktu</option>
+                        <option value="month" ${this.dateFilter === 'month' ? 'selected' : ''}>Bulan Ini</option>
+                        <option value="year" ${this.dateFilter === 'year' ? 'selected' : ''}>Tahun Ini</option>
+                    </select>
+                </div>
             </div>
 
             <!-- Stat Cards -->
@@ -172,5 +223,10 @@ const DashboardPage = {
                 <div class="donut-center-label">Dokumen</div>
             </div>
         `;
+    },
+
+    changeFilter(val) {
+        this.dateFilter = val;
+        this.render();
     }
 };

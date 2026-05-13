@@ -7,7 +7,20 @@ const ProjectsPage = {
 
     async render() {
         const main = document.getElementById('main-content');
-        main.innerHTML = `<div style="text-align:center; padding: 40px; color: var(--text-tertiary);">Memuat data proyek...</div>`;
+        main.innerHTML = `
+            <div class="page-header">
+                <div class="skeleton skeleton-title" style="width:150px"></div>
+                <div class="skeleton skeleton-text" style="width:250px"></div>
+            </div>
+            <div style="margin-top:20px;">
+                <div class="skeleton skeleton-block" style="height:60px; border-radius:8px"></div>
+                <div class="card-grid stagger" style="margin-top:20px">
+                    <div class="skeleton skeleton-block" style="height:200px"></div>
+                    <div class="skeleton skeleton-block" style="height:200px"></div>
+                    <div class="skeleton skeleton-block" style="height:200px"></div>
+                </div>
+            </div>
+        `;
 
         const projects = await this.getFilteredProjects();
         const allProjects = await Store.getAll(Store.KEYS.PROJECTS);
@@ -36,7 +49,11 @@ const ProjectsPage = {
                         <option value="Tertunda" ${this.filters.status === 'Tertunda' ? 'selected' : ''}>Tertunda</option>
                     </select>
                 </div>
-                ${Store.isAdmin() ? `<button class="btn btn-primary" id="btn-add-proj">${Components.icon('plus', 16)} Tambah Proyek</button>` : ''}
+                <div style="display:flex; gap:var(--space-2);">
+                    <button class="btn btn-ghost" onclick="ProjectsPage.exportCSV()">Ekspor CSV</button>
+                    <button class="btn btn-ghost" onclick="window.print()">Cetak PDF</button>
+                    ${Store.isAdmin() ? `<button class="btn btn-primary" id="btn-add-proj">${Components.icon('plus', 16)} Tambah Proyek</button>` : ''}
+                </div>
             </div>
 
             <div class="card-grid stagger">
@@ -91,6 +108,26 @@ const ProjectsPage = {
         if (this.filters.category) projects = projects.filter(p => p.kategori === this.filters.category);
         if (this.filters.status) projects = projects.filter(p => p.status === this.filters.status);
         return projects;
+    },
+
+    exportCSV() {
+        this.getFilteredProjects().then(projects => {
+            if (projects.length === 0) return Components.toast('Tidak ada data untuk diekspor', 'warning');
+            const data = projects.map(p => ({
+                "ID Proyek": p.id,
+                "Kode": p.kode_proyek || '-',
+                "Nama Proyek": p.nama_proyek,
+                "Kategori": p.kategori,
+                "Status": p.status,
+                "Progress (%)": p.progress,
+                "Lokasi": p.lokasi || '-',
+                "Tahun Anggaran": p.tahun_anggaran,
+                "Nilai Kontrak (Rp)": p.nilai_kontrak,
+                "Kontraktor": p.kontraktor || '-',
+                "Konsultan": p.konsultan || '-'
+            }));
+            Utils.exportToCSV('Laporan_Proyek.csv', data);
+        });
     },
 
     bindEvents() {

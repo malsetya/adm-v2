@@ -20,6 +20,7 @@
     <link rel="stylesheet" href="css/pages/users.css">
     <link rel="stylesheet" href="css/pages/landing.css">
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>">
+    <link rel="manifest" href="manifest.json">
 </head>
 <body>
 
@@ -199,6 +200,15 @@
             console.error('UNHANDLED REJECTION:', e.reason);
             document.body.innerHTML += '<div style="color:red;z-index:9999;position:fixed;top:50px;left:0;background:white;padding:10px;">Unhandled Promise: ' + e.reason + '</div>';
         };
+
+        // Register Service Worker
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('ServiceWorker registered'))
+                    .catch(err => console.log('ServiceWorker registration failed: ', err));
+            });
+        }
     </script>
 </body>
 </html>

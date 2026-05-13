@@ -127,5 +127,41 @@ const Utils = {
         if (!signatures || !signatures.length) return 0;
         const signed = signatures.filter(s => s.signed).length;
         return Math.round((signed / signatures.length) * 100);
+    },
+
+    exportToCSV(filename, data) {
+        if (!data || !data.length) {
+            alert('Tidak ada data untuk diekspor.');
+            return;
+        }
+
+        const headers = Object.keys(data[0]);
+        
+        const escapeCSV = (val) => {
+            if (val === null || val === undefined) return '""';
+            let str = String(val);
+            str = str.replace(/"/g, '""');
+            if (str.search(/("|,|\n)/g) >= 0) {
+                str = `"${str}"`;
+            }
+            return str;
+        };
+
+        const csvContent = [
+            headers.map(escapeCSV).join(','),
+            ...data.map(row => headers.map(header => escapeCSV(row[header])).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     }
 };
