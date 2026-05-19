@@ -55,6 +55,11 @@ self.addEventListener('fetch', event => {
           });
           
           return response;
+        }).catch(() => {
+          // Jika offline dan me-request HTML/navigasi, return index.html
+          if (event.request.mode === 'navigate') {
+            return caches.match('./index.html');
+          }
         });
       })
   );
